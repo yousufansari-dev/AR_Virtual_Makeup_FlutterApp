@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Makeup Expert Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #chat-window::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-window::-webkit-scrollbar-thumb {
+            background-color: #fce7f3;
+            border-radius: 4px;
+        }
+        #chat-window::-webkit-scrollbar-track {
+            background: #fff;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'beauty-pink': '#fbcfe8',
+                        'beauty-dark': '#831843',
+                        'beauty-light': '#fef3c7',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-beauty-light min-h-screen flex items-center justify-center font-sans p-4">
+
+    <div id="chatbot-container" class="bg-white shadow-2xl rounded-xl w-full max-w-lg mx-auto flex flex-col h-[80vh] sm:h-[90vh]">
+        
+        <header class="bg-beauty-dark text-white p-4 rounded-t-xl shadow-md flex items-center justify-between">
+            <div class="flex items-center">
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                <h1 class="text-xl font-bold">Your Makeup AI Expert</h1>
+            </div>
+        </header>
+
+        <div id="chat-window" class="flex-grow p-4 overflow-y-auto space-y-4">
+            <div class="flex justify-start">
+                <div class="bg-beauty-pink text-beauty-dark p-3 rounded-xl rounded-tl-none max-w-[80%] shadow-sm">
+                    Hi! I'm your personal AI Makeup Expert. Ask me any question about products, techniques, or beauty tips!
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-gray-100 flex gap-2">
+            <input 
+                type="text" 
+                id="user-input" 
+                placeholder="Ask your makeup question..." 
+                class="flex-grow p-3 border border-beauty-pink rounded-xl focus:ring-2 focus:ring-beauty-dark focus:border-beauty-dark transition duration-150"
+                onkeypress="if(event.key === 'Enter') sendMessage()"
+            >
+            <button 
+                id="send-button"
+                type="button"
+                onclick="sendMessage()" 
+                class="bg-beauty-dark text-white p-3 rounded-xl shadow-lg hover:bg-pink-800 transition duration-150 transform hover:scale-105 disabled:opacity-50 disabled:scale-100"
+                aria-label="Send message"
+                title="Send message"
+            >
+                <span class="sr-only">Send message</span>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 12h14"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm mx-4">
+            <h3 id="modal-title" class="text-xl font-bold mb-3 text-red-600">Error</h3>
+            <p id="modal-message" class="text-gray-700 mb-4">An error occurred.</p>
+            <button onclick="closeModal()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = "AIzaSyCQDLhImS9UijF80JDNXe2cpJlxxF0hm_k"; // Environment will handle this
+        const CHAT_WINDOW = document.getElementById('chat-window');
+        const USER_INPUT = document.getElementById('user-input');
+        const SEND_BUTTON = document.getElementById('send-button');
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
+        
+        function openModal(title, message) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('error-modal').classList.remove('hidden');
+            document.getElementById('error-modal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('error-modal').classList.remove('flex');
+            document.getElementById('error-modal').classList.add('hidden');
+        }
+
+        function appendMessage(text, sender, id = null) {
+            const messageContainer = document.createElement('div');
+            const messageBubble = document.createElement('div');
+            
+            if (sender === 'user') {
+                messageContainer.className = 'flex justify-end';
+                messageBubble.className = 'bg-beauty-dark text-white p-3 rounded-xl rounded-tr-none max-w-[80%] shadow-md';
+            } else {
+                messageContainer.className = 'flex justify-start';
+                messageBubble.className = 'bg-beauty-pink text-beauty-dark p-3 rounded-xl rounded-tl-none max-w-[80%] shadow-md';
+            }
+
+            messageBubble.innerText = text;
+            if (id) messageBubble.id = id;
+            
+            messageContainer.appendChild(messageBubble);
+            CHAT_WINDOW.appendChild(messageContainer);
+            CHAT_WINDOW.scrollTop = CHAT_WINDOW.scrollHeight;
+            return messageBubble;
+        }
+
+        async function sendMessage() {
+            const prompt = USER_INPUT.value.trim();
+            if (!prompt) return;
+
+            appendMessage(prompt, 'user');
+            USER_INPUT.value = '';
+            
+            SEND_BUTTON.disabled = true;
+            USER_INPUT.disabled = true;
+            const typingIndicator = appendMessage('AI Expert is thinking...', 'bot', 'typing-indicator');
+
+            try {
+                const responseText = await callGeminiAPI(prompt);
+                typingIndicator.remove();
+                appendMessage(responseText, 'bot');
+            } catch (error) {
+                typingIndicator.remove();
+                appendMessage("Sorry, I'm having trouble connecting right now.", 'bot');
+                openModal("Connection Error", error.message);
+            } finally {
+                SEND_BUTTON.disabled = false;
+                USER_INPUT.disabled = false;
+                USER_INPUT.focus();
+            }
+        }
+
+        async function callGeminiAPI(userQuery) {
+            const systemPrompt = "You are a friendly makeup expert. Answer questions about beauty products and makeup techniques simply and clearly. Stay on the topic of makeup.";
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            let retries = 5;
+            let delay = 1000;
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(`${API_URL}?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                    
+                    const result = await response.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't find an answer for that.";
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

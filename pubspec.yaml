@@ -1,0 +1,120 @@
+name: virtualmakeupapp
+description: "A new Flutter project."
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  lottie: ^3.3.2
+  smooth_page_indicator: ^1.2.1
+  cloud_firestore: ^5.4.4
+  firebase_core: ^3.6.0
+  http: ^1.2.2
+  firebase_auth: ^5.7.0
+  cached_network_image: ^3.4.1
+  flutter_staggered_grid_view: ^0.7.0
+  image_picker: ^1.2.1
+  camera: ^0.11.3
+  camera_web: ^0.3.5+1
+  carousel_slider: ^5.1.1
+  google_fonts: ^6.3.2
+  crypto: ^3.0.7
+  flutter_colorpicker: ^1.1.0
+  ar_flutter_plugin: ^0.7.3
+  uuid: ^4.5.2
+  google_mlkit_face_detection: ^0.13.1
+  google_mlkit_commons: ^0.11.0
+  path_provider: ^2.1.5
+  screenshot: ^3.0.0
+  share_plus: ^12.0.1
+  flutter_rating_bar: ^4.0.1
+  intl: ^0.20.2
+  cloudinary_public: ^0.23.1
+  cloudinary_sdk: ^5.0.0+1
+  image: ^4.5.4
+  permission_handler: ^10.4.5
+  image_gallery_saver: ^2.0.3
+  fluttertoast: ^9.0.0
+  photo_view: ^0.15.0
+  google_ml_kit: ^0.20.0
+  webview_flutter: ^4.2.2
+  webview_flutter_android: ^4.10.11
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+
+    - assets/images/welcome.png
+    - assets/images/no_image.png
+    - assets/ar.json
+    - assets/noresult.json
+    - assets/compare.json
+    - assets/welcome.json
+    - assets/Makeup.json
+    - assets/login.json
+    - assets/signup.json
+    - assets/loader.json
+    - assets/hair.json
+    - assets/AdminPanel.json
+    - assets/images/lipstick.png
+    - assets/images/blush.png
+    - assets/images/foundation.png
+    - assets/images/hairstyle.png
+    - assets/images/glasses.png
+    - assets/images/banner1.jpg
+    - assets/images/banner2.jpg
+    - assets/images/banner3.jpg
+    - assets/images/all.png
+    - assets/glasses/aviator.png
+    - assets/glasses/wayfarer.png
+    - assets/glasses/round.png
+    - assets/glasses/cateye.png
+    - assets/glasses/rectangle.png
+    - assets/glasses/browline.png
+    - assets/glasses/clubmaster.png
+    - assets/glasses/shield.png
+    - assets/glasses/sport.png
+    - assets/glasses/oversized.png
+    - assets/hairstyles/bob_cut.png
+    - assets/hairstyles/long_hair.png
+    - assets/hairstyles/short_hair.png
+    - assets/hairstyles/long_hair.png
+    - assets/hairstyles/wavy.png
+    - assets/hairstyles/curly.png
+    - assets/images/MACLipstick.png
+    - assets/images/NYXLipGloss.png
+    - assets/images/FentyBeautyFoundation.png
+    - assets/images/RevlonMatteLipstick.png
+    - assets/images/CliniqueFoundation.png
+    - assets/images/UrbanDecayLipstick.png
+    - assets/images/DiorLipstick.png
+    - assets/images/EsteeLauderFoundation.png
+    - assets/glasses/frame1.png
+    - assets/glasses/frame2.png
+    - assets/glasses/frame3.png
+    - assets/glasses/frame4.png
+    - assets/glasses/frame5.png
+    - assets/lipsticktryon.html
+    - assets/blushtryon.html
+    - assets/foundationtryon.html
+    - assets/glassestryon.html
+    - assets/hairtryon.html
+    - assets/skintoneanalyzer.html
+    - assets/chatbot.html
+    - assets/team/team.PNG
+
+

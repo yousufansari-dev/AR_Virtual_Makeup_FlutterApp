@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Glasses Try-On</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f1f5f9;
+  text-align:center;
+}
+canvas{
+  width:95%;
+  max-width:680px;
+  border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);
+  margin-top:10px;
+}
+.controls{
+  max-width:680px;
+  margin:14px auto;
+  background:#fff;
+  border-radius:14px;
+  padding:14px;
+  box-shadow:0 6px 18px rgba(0,0,0,.15);
+}
+.btn-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+button{
+  padding:12px;
+  font-size:15px;
+  border-radius:10px;
+  border:none;
+  cursor:pointer;
+}
+.action{ background:#0f172a; color:#fff; }
+.action.alt{ background:#0284c7; }
+.action.warn{ background:#16a34a; }
+.frame-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(90px,1fr));
+  gap:10px;
+}
+
+.frame-btn{
+  background:#e2e8f0;
+  font-weight:600;
+}
+.frame-btn.active{
+  background:#2563eb;
+  color:#fff;
+}
+</style>
+</head>
+
+<body>
+
+<video id="video" autoplay playsinline style="display:none;"></video>
+<canvas id="canvas"></canvas>
+
+<div class="controls">
+
+  <div class="btn-grid">
+    <button class="action" id="captureBtn">📸 Capture</button>
+    <button class="action alt" id="resumeBtn">▶ Resume</button>
+    <button class="action warn" id="downloadBtn">⬇ Download</button>
+    <button class="action alt">☁ Save</button>
+  </div>
+
+  <div style="margin-top:15px;">
+    <input type="file" id="uploadImg" accept="image/*">
+    <button class="action warn" id="deleteImgBtn">🗑 Delete Image</button>
+  </div>
+
+  <h3>Choose Frame</h3>
+ <div class="frame-grid">
+  <button class="frame-btn" onclick="selectFrameUI(1,this)">Frame 1</button>
+  <button class="frame-btn" onclick="selectFrameUI(2,this)">Frame 2</button>
+  <button class="frame-btn" onclick="selectFrameUI(3,this)">Frame 3</button>
+  <button class="frame-btn" onclick="selectFrameUI(4,this)">Frame 4</button>
+  <button class="frame-btn" onclick="selectFrameUI(5,this)">Frame 5</button>
+</div>
+
+
+  <h3 style="margin-top:15px;">Adjust Size</h3>
+  <input type="range" id="sizeSlider" min="0.7" max="1.6" step="0.05" value="1" style="width:100%;">
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let selectedFrame = null;
+let uploadedImage = null;
+let glassesScale = 1;
+let landmarks = null;
+
+const frames = {
+  1:"/assets/assets/glasses/frame1.png",
+  2:"/assets/assets/glasses/frame2.png",
+  3:"/assets/assets/glasses/frame3.png",
+  4:"/assets/assets/glasses/frame4.png",
+  5:"/assets/assets/glasses/frame5.png"
+};
+
+const frameImages = {};
+for(let i in frames){
+  frameImages[i] = new Image();
+  frameImages[i].src = frames[i];
+}
+
+document.getElementById("sizeSlider").oninput = e=>{
+  glassesScale = parseFloat(e.target.value);
+};
+
+const faceMesh = new FaceMesh({
+  locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+});
+
+faceMesh.setOptions({
+  maxNumFaces:1,
+  refineLandmarks:true,
+  minDetectionConfidence:0.6,
+  minTrackingConfidence:0.6
+});
+
+faceMesh.onResults(res=>{
+  landmarks = res.multiFaceLandmarks?.[0] || null;
+  canvas.width = res.image.width;
+  canvas.height = res.image.height;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(res.image,0,0);
+
+  if(landmarks && selectedFrame){
+    drawGlasses(landmarks, frameImages[selectedFrame]);
+  }
+});
+
+new Camera(video,{
+  onFrame: async()=>{ if(!uploadedImage) await faceMesh.send({image:video}); }
+}).start();
+
+document.getElementById("uploadImg").onchange = async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const img = new Image();
+  img.onload = async ()=>{
+    uploadedImage = img;
+    await faceMesh.send({ image: img });
+  };
+  img.src = URL.createObjectURL(file);
+};
+
+document.getElementById("deleteImgBtn").onclick=()=>{
+  uploadedImage=null;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+};
+
+function drawGlasses(lm,img){
+  const l = lm[33], r = lm[263];
+  const dx = (r.x-l.x)*canvas.width;
+  const dy = (r.y-l.y)*canvas.height;
+
+  const angle = Math.atan2(dy,dx);
+  const eyeDist = Math.hypot(dx,dy);
+
+  const w = eyeDist * 2.4 * glassesScale;
+  const h = w / 2;
+
+  const cx = (l.x+r.x)/2*canvas.width;
+  const cy = (l.y+r.y)/2*canvas.height;
+
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle);
+  ctx.drawImage(img,-w/2,-h/2,w,h);
+  ctx.restore();
+}
+
+function selectFrameUI(n,btn){
+  selectedFrame=n;
+  document.querySelectorAll(".frame-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+document.getElementById("downloadBtn").onclick=()=>{
+  const a=document.createElement("a");
+  a.href=canvas.toDataURL("image/png");
+  a.download="glasses_tryon.png";
+  a.click();
+};
+</script>
+
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Blush Try-On</title>
+
+<style>
+body{
+  background:#0f0f0f;
+  color:#fff;
+  font-family:Arial, sans-serif;
+  text-align:center;
+  margin:0;
+  padding:15px;
+}
+
+h2{margin-bottom:10px;}
+
+#wrap{
+  position:relative;
+  max-width:640px;
+  margin:auto;
+}
+
+video,canvas{
+  width:100%;
+  aspect-ratio:4/3;
+  border-radius:16px;
+  object-fit:cover;
+}
+
+canvas{
+  position:absolute;
+  left:0;
+  top:0;
+  pointer-events:none;
+}
+
+.controls{
+  margin-top:12px;
+}
+
+input[type=range]{
+  width:200px;
+}
+
+/* SHADES */
+.shades{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+  margin-top:8px;
+}
+
+.shade{
+  width:70px;
+  cursor:pointer;
+  text-align:center;
+  font-size:12px;
+}
+
+.shade span{
+  display:block;
+  margin-top:4px;
+}
+
+.swatch{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  margin:auto;
+  border:2px solid #fff;
+}
+
+.shade.active .swatch{
+  border:3px solid #ff4f8b;
+  box-shadow:0 0 10px #ff4f8b;
+}
+
+button{
+  background:#1f2933;
+  color:#fff;
+  border:none;
+  padding:10px 18px;
+  border-radius:12px;
+  cursor:pointer;
+  margin-top:12px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>AI Blush – Before / After</h2>
+
+<div id="wrap">
+  <video id="video" autoplay muted playsinline></video>
+  <canvas id="canvas"></canvas>
+</div>
+
+<div class="controls">
+  Before / After
+  <input type="range" min="0" max="100" value="50" id="compare">
+</div>
+
+<div class="controls">
+  <strong>Blush Shades</strong>
+  <div class="shades" id="shadeBox"></div>
+</div>
+
+<div class="controls">
+  Intensity
+  <input type="range" min="0.25" max="0.65" step="0.02" value="0.45" id="opacity">
+</div>
+
+<button onclick="downloadImage()">📥 Download</button>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let blushColor = "#FF7B50";
+let blushOpacity = 0.45;
+let compareValue = 50;
+let landmarks = null;
+
+opacity.oninput = e => blushOpacity = +e.target.value;
+compare.oninput = e => compareValue = +e.target.value;
+
+/* BLUSH SHADES */
+const shades=[
+  {name:"Peach Glow", color:"#FF7B50"},
+  {name:"Soft Rose", color:"#E03D5C"},
+  {name:"Candy Pink", color:"#FF4F8B"},
+  {name:"Coral Kiss", color:"#FF6F61"},
+  {name:"Berry Flush", color:"#B83260"},
+  {name:"Warm Nude", color:"#D4A373"},
+  {name:"Sunset Peach", color:"#F4978E"},
+  {name:"Plum Blush", color:"#8E3557"}
+];
+
+const shadeBox=document.getElementById("shadeBox");
+
+shades.forEach((s,i)=>{
+  const d=document.createElement("div");
+  d.className="shade"+(i===0?" active":"");
+  d.innerHTML=`
+    <div class="swatch" style="background:${s.color}"></div>
+    <span>${s.name}</span>
+  `;
+  d.onclick=()=>{
+    blushColor=s.color;
+    document.querySelectorAll(".shade").forEach(x=>x.classList.remove("active"));
+    d.classList.add("active");
+  };
+  shadeBox.appendChild(d);
+});
+
+/* CAMERA */
+navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}})
+.then(stream=>video.srcObject=stream);
+
+/* FACE MESH */
+const faceMesh=new FaceMesh({
+  locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+});
+
+faceMesh.setOptions({
+  maxNumFaces:1,
+  refineLandmarks:true,
+  minDetectionConfidence:0.6,
+  minTrackingConfidence:0.6
+});
+
+faceMesh.onResults(r=>{
+  landmarks=r.multiFaceLandmarks?.[0]||null;
+});
+
+/* LANDMARKS */
+const LEFT=50, RIGHT=280, FL=234, FR=454;
+
+/* MAIN LOOP */
+async function render(){
+  if(video.readyState>=2){
+    canvas.width=video.videoWidth;
+    canvas.height=video.videoHeight;
+
+    await faceMesh.send({image:video});
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    if(landmarks) drawBlush();
+  }
+  requestAnimationFrame(render);
+}
+
+function drawBlush(){
+  const lm=landmarks;
+
+  const lx=lm[LEFT].x*canvas.width;
+  const ly=lm[LEFT].y*canvas.height;
+  const rx=lm[RIGHT].x*canvas.width;
+  const ry=lm[RIGHT].y*canvas.height;
+
+  const faceW=Math.abs(lm[FR].x-lm[FL].x)*canvas.width;
+  const radius=faceW*0.18;
+
+  const splitX=canvas.width*(compareValue/100);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(splitX,0,canvas.width,canvas.height);
+  ctx.clip();
+
+  ctx.globalCompositeOperation="color";
+  ctx.globalAlpha=blushOpacity;
+  ctx.filter="blur(10px)";
+
+  [[lx,ly],[rx,ry]].forEach(([x,y])=>{
+    const g=ctx.createRadialGradient(x,y,radius*0.2,x,y,radius);
+    g.addColorStop(0,blushColor);
+    g.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    ctx.arc(x,y,radius,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  ctx.restore();
+
+  ctx.strokeStyle="#fff";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(splitX,0);
+  ctx.lineTo(splitX,canvas.height);
+  ctx.stroke();
+
+  ctx.filter="none";
+}
+
+render();
+
+/* DOWNLOAD */
+function downloadImage(){
+  const t=document.createElement("canvas");
+  t.width=canvas.width;
+  t.height=canvas.height;
+  const c=t.getContext("2d");
+  c.drawImage(video,0,0);
+  c.drawImage(canvas,0,0);
+  t.toBlob(b=>{
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(b);
+    a.download="AI_Blush.png";
+    a.click();
+  });
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Foundation Compare</title>
+
+<style>
+body{
+  background:#0f0f0f;
+  color:#fff;
+  font-family:Arial, sans-serif;
+  text-align:center;
+  margin:0;
+  padding:15px;
+}
+
+h2{ margin-bottom:10px; }
+
+#wrap{
+  position:relative;
+  width:100%;
+  max-width:640px;
+  margin:auto;
+}
+
+video,canvas{
+  width:100%;
+  aspect-ratio:4/3;
+  border-radius:14px;
+  object-fit:cover;
+}
+
+canvas{
+  position:absolute;
+  left:0;
+  top:0;
+  pointer-events:none;
+}
+
+#slider{
+  width:100%;
+  max-width:300px;
+  margin:15px auto;
+}
+
+input[type=range]{
+  width:100%;
+}
+
+#controls{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
+  margin-top:10px;
+}
+
+.shade-btn{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:8px;
+  background:#222;
+  color:#fff;
+  border:none;
+  font-size:12px;
+  cursor:pointer;
+}
+
+.swatch{
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  border:1px solid #aaa;
+}
+
+.action{
+  margin-top:15px;
+  background:#0a84ff;
+  border:none;
+  padding:10px 18px;
+  border-radius:10px;
+  color:#fff;
+  font-size:14px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h2>AI Foundation – Before / After</h2>
+
+<div id="wrap">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+</div>
+
+<div id="slider">
+  <input type="range" min="0" max="100" value="50" id="compare">
+</div>
+
+<div id="controls">
+  <button class="shade-btn" onclick="setShade('#fde6cc')">
+    <div class="swatch" style="background:#fde6cc"></div>Porcelain
+  </button>
+
+  <button class="shade-btn" onclick="setShade('#fbe0c2')">
+    <div class="swatch" style="background:#fbe0c2"></div>Fair
+  </button>
+
+  <button class="shade-btn" onclick="setShade('#f1c6a8')">
+    <div class="swatch" style="background:#f1c6a8"></div>Ivory
+  </button>
+
+  <button class="shade-btn" onclick="setShade('#e1b38f')">
+    <div class="swatch" style="background:#e1b38f"></div>Warm
+  </button>
+
+  <button class="shade-btn" onclick="setShade('#d2a679')">
+    <div class="swatch" style="background:#d2a679"></div>Natural
+  </button>
+
+  <button class="shade-btn" onclick="setShade('#c49b7c')">
+    <div class="swatch" style="background:#c49b7c"></div>Nude
+  </button>
+
+  <button class="shade-btn" onclick="setShade('#b88962')">
+    <div class="swatch" style="background:#b88962"></div>Beige
+  </button>
+
+  <button class="shade-btn" onclick="setShade('#a97458')">
+    <div class="swatch" style="background:#a97458"></div>Caramel
+  </button>
+
+  <button class="shade-btn" onclick="setShade('#8c5a3c')">
+    <div class="swatch" style="background:#8c5a3c"></div>Mocha
+  </button>
+
+  <button class="shade-btn" onclick="setShade('#6f4a2e')">
+    <div class="swatch" style="background:#6f4a2e"></div>Deep
+  </button>
+</div>
+
+
+<button class="action" onclick="downloadImage()">📥 Download</button>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+const video=document.getElementById("video");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+
+let shade="#f1c6a8";
+let slider=50;
+
+document.getElementById("compare").oninput=e=>{
+  slider=parseInt(e.target.value);
+};
+
+function setShade(c){ shade=c; }
+
+const FACE=[
+10,338,297,332,284,251,389,356,454,323,361,288,
+397,365,379,378,400,377,152,148,176,149,150,
+136,172,58,132,93,234,127,162,21,54,103,67,
+109,33
+];
+
+let ready=false;
+function resize(){
+  if(!ready && video.videoWidth){
+    canvas.width=video.videoWidth;
+    canvas.height=video.videoHeight;
+    ready=true;
+  }
+}
+
+function drawFoundation(lm){
+  resize();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const splitX=canvas.width*(slider/100);
+
+  // AFTER (right side)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(splitX,0,canvas.width,canvas.height);
+  ctx.clip();
+
+  ctx.beginPath();
+  ctx.moveTo(lm[FACE[0]].x*canvas.width,lm[FACE[0]].y*canvas.height);
+  FACE.forEach(i=>{
+    ctx.lineTo(lm[i].x*canvas.width,lm[i].y*canvas.height);
+  });
+  ctx.closePath();
+  ctx.clip();
+
+  ctx.filter="blur(8px)";
+  ctx.globalAlpha=0.35;
+  ctx.globalCompositeOperation="overlay";
+  ctx.fillStyle=shade;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.restore();
+
+  // Divider Line
+  ctx.strokeStyle="rgba(255,255,255,0.9)";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(splitX,0);
+  ctx.lineTo(splitX,canvas.height);
+  ctx.stroke();
+
+  // Handle
+  ctx.beginPath();
+  ctx.arc(splitX,canvas.height/2,14,0,Math.PI*2);
+  ctx.fillStyle="#fff";
+  ctx.fill();
+
+  // Labels
+  ctx.font="bold 16px Arial";
+  ctx.fillStyle="#fff";
+  ctx.fillText("Before",20,30);
+  ctx.fillText("After",canvas.width-70,30);
+
+  ctx.filter="none";
+  ctx.globalAlpha=1;
+  ctx.globalCompositeOperation="source-over";
+}
+
+const faceMesh=new FaceMesh({
+  locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+});
+
+faceMesh.setOptions({
+  maxNumFaces:1,
+  refineLandmarks:true,
+  minDetectionConfidence:0.6,
+  minTrackingConfidence:0.6
+});
+
+faceMesh.onResults(r=>{
+  if(r.multiFaceLandmarks){
+    drawFoundation(r.multiFaceLandmarks[0]);
+  }
+});
+
+const cam=new Camera(video,{
+  facingMode:"user",
+  width:1280,
+  height:960,
+  onFrame:async()=>await faceMesh.send({image:video})
+});
+cam.start();
+
+function downloadImage(){
+  const t=document.createElement("canvas");
+  t.width=canvas.width;
+  t.height=canvas.height;
+  const x=t.getContext("2d");
+  x.drawImage(video,0,0,t.width,t.height);
+  x.drawImage(canvas,0,0);
+  t.toBlob(b=>{
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(b);
+    a.download="AI_Before_After.png";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+}
+</script>
+
+</body>
+</html>

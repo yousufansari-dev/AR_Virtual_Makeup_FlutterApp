@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "307268666238",
+    "project_id": "arvirtualmakeup",
+    "storage_bucket": "arvirtualmakeup.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:307268666238:android:567b54941db186f038292f",
+        "android_client_info": {
+          "package_name": "com.example.virtualmakeupapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwPuyD_9RNr-Yh5wQWmbawkZVHhfgDrRE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

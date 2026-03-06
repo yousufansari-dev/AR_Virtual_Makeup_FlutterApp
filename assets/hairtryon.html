@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Hair Try-On</title>
+<style>
+body{
+  margin:0;
+  background:#eef2f7;
+  font-family:Arial, sans-serif;
+}
+.app{
+  max-width:420px;
+  margin:auto;
+  background:#f8fafc;
+  min-height:100vh;
+  padding-bottom:20px;
+}
+canvas{
+  width:100%;
+  border-radius:14px;
+  margin-top:10px;
+  touch-action:none;
+}
+.panel{
+  background:#fff;
+  margin:12px;
+  padding:14px;
+  border-radius:14px;
+  box-shadow:0 4px 12px rgba(0,0,0,.1);
+}
+.btn-row{
+  display:flex;
+  gap:10px;
+}
+button,label{
+  flex:1;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  font-weight:600;
+  cursor:pointer;
+}
+.capture{background:#0f172a;color:#fff;}
+.resume{background:#0284c7;color:#fff;}
+.download{background:#16a34a;color:#fff;}
+.hair-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.hair-btn{
+  background:#e5e7eb;
+}
+.hair-btn.active{
+  background:#2563eb;
+  color:#fff;
+}
+.upload{background:#f97316;color:#fff;text-align:center;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Video and Canvas -->
+  <video id="video" autoplay playsinline style="display:none"></video>
+  <canvas id="canvas"></canvas>
+
+  <!-- Capture/Resume/Download Buttons -->
+  <div class="panel">
+    <div class="btn-row">
+      <button class="capture" id="captureBtn">📸 Capture</button>
+      <button class="resume" id="resumeBtn">▶ Resume</button>
+      <button class="download" id="downloadBtn">⬇ Download</button>
+    </div>
+  </div>
+
+  <!-- Hairstyle Selection -->
+  <div class="panel">
+    <b>Choose Hairstyle</b>
+    
+    <div class="hair-grid">
+      <button class="hair-btn" onclick="selectHair(0,this)">Bob</button>
+      <button class="hair-btn" onclick="selectHair(1,this)">Long</button>
+      <button class="hair-btn" onclick="selectHair(2,this)">Curly</button>
+      <button class="hair-btn" onclick="selectHair(3,this)">Short</button>
+      <button class="hair-btn" onclick="selectHair(4,this)">Wavy</button>
+      <button class="hair-btn" onclick="selectHair(5,this)">Pony</button>
+    </div>
+  </div>
+
+  <!-- Upload Custom Hair -->
+  <div class="panel">
+    <label class="upload">
+      ⬆ Upload Hairstyle (PNG)
+      <input type="file" id="uploadHair" accept="image/png" hidden>
+    </label>
+  </div>
+
+  <!-- Upload User Photo and Delete -->
+  <div class="panel">
+    <label class="upload">
+      ⬆ Upload Your Photo
+      <input type="file" id="uploadUser" accept="image/*" hidden>
+    </label>
+    <button id="deleteUser" class="download" style="margin-top:10px;">🗑 Delete Photo</button>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let selectedHair = null;
+let frozen = false;
+let offsetX=0, offsetY=0, scaleFactor=1, rotateOffset=0;
+let lastX=0,lastY=0,lastDist=0,lastAngle=0;
+let userImage = null;
+
+// Hair Images
+const hairImages = Array.from({length:6},()=>new Image());
+hairImages[0].src = "assets/hairstyles/bob_cut.png";
+hairImages[1].src = "assets/hairstyles/long_hair.png";
+hairImages[2].src = "assets/hairstyles/curly.png";
+hairImages[3].src = "assets/hairstyles/short_hair.png";
+hairImages[4].src = "assets/hairstyles/wavy.png";
+hairImages[5].src = "assets/hairstyles/ponytail.png";
+
+// Debug
+hairImages.forEach((img,i)=>{
+  img.onload = ()=>console.log("Hair loaded:", i);
+  img.onerror = ()=>console.error("Hair FAILED:", img.src);
+});
+
+// Upload Custom Hair
+const uploadHair = document.getElementById("uploadHair");
+uploadHair.onchange = e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const img = new Image();
+  img.onload = ()=>{
+    hairImages.push(img);
+    selectedHair = hairImages.length-1;
+    resetAdjust();
+  };
+  img.src = URL.createObjectURL(file);
+};
+
+// Upload User Image
+const uploadUser = document.getElementById("uploadUser");
+const deleteUser = document.getElementById("deleteUser");
+
+uploadUser.onchange = e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const img = new Image();
+  img.onload = ()=>{
+    userImage = img;
+    frozen = true;
+    drawCanvas();
+  };
+  img.src = URL.createObjectURL(file);
+};
+
+// Delete User Image
+deleteUser.onclick = ()=>{
+  userImage = null;
+  frozen = false;
+};
+
+// FaceMesh
+const faceMesh = new FaceMesh({ locateFile: f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+faceMesh.setOptions({maxNumFaces:1,refineLandmarks:true});
+
+faceMesh.onResults(res=>{
+  if(userImage){ drawCanvas(); return; } // skip camera if user image exists
+  canvas.width = res.image.width;
+  canvas.height = res.image.height;
+  ctx.drawImage(res.image,0,0);
+  const lm = res.multiFaceLandmarks?.[0];
+  if(lm && selectedHair!==null){
+    drawHair(lm,hairImages[selectedHair]);
+  }
+});
+
+new Camera(video,{
+  width:640,
+  height:480,
+  onFrame:async()=>{
+    if(!frozen) await faceMesh.send({image:video});
+  }
+}).start();
+
+// Draw Hair
+function drawHair(lm,img){
+  if(!img.complete) return;
+  const left = lm[234];
+  const right = lm[454];
+  const top = lm[10];
+  const chin = lm[152];
+
+  const faceW = (right.x-left.x)*canvas.width;
+  const faceH = (chin.y-top.y)*canvas.height;
+  const angle = Math.atan2((right.y-left.y)*canvas.height,(right.x-left.x)*canvas.width);
+
+  const w = faceW*1.7*scaleFactor;
+  const h = faceH*2.0*scaleFactor;
+
+  const cx = (left.x+right.x)/2*canvas.width + offsetX;
+  const cy = top.y*canvas.height + h*0.1 + offsetY;
+
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle + rotateOffset);
+  ctx.drawImage(img,-w/2,-h*0.65,w,h);
+  ctx.restore();
+}
+
+// Draw Canvas for Uploaded User Image
+function drawCanvas(){
+  if(!userImage) return;
+  canvas.width = userImage.width;
+  canvas.height = userImage.height;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(userImage,0,0,canvas.width,canvas.height);
+  if(selectedHair !== null){
+    const lm = [
+      {x:0.3, y:0.2}, // left
+      {x:0.7, y:0.2}, // right
+      {x:0.5, y:0.1}, // top
+      {x:0.5, y:0.9}  // chin
+    ];
+    drawHair(lm,hairImages[selectedHair]);
+  }
+}
+
+// Buttons
+document.getElementById("captureBtn").onclick = ()=> frozen=true;
+document.getElementById("resumeBtn").onclick = ()=> frozen=false;
+document.getElementById("downloadBtn").onclick = ()=>{
+  const a = document.createElement("a");
+  a.href = canvas.toDataURL("image/png");
+  a.download = "ai_hair_tryon.png";
+  a.click();
+};
+
+// Hair selection
+function resetAdjust(){ offsetX=0; offsetY=0; scaleFactor=1; rotateOffset=0; }
+function selectHair(i,btn){
+  selectedHair = i;
+  resetAdjust();
+  document.querySelectorAll(".hair-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+// Touch Controls
+canvas.addEventListener("touchstart",e=>{
+  if(e.touches.length===1){ lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; }
+  if(e.touches.length===2){ lastDist=distance(e.touches); lastAngle=angle(e.touches); }
+});
+
+canvas.addEventListener("touchmove",e=>{
+  e.preventDefault();
+  if(e.touches.length===1){
+    offsetX+=e.touches[0].clientX-lastX;
+    offsetY+=e.touches[0].clientY-lastY;
+    lastX=e.touches[0].clientX;
+    lastY=e.touches[0].clientY;
+  }
+  if(e.touches.length===2){
+    const d=distance(e.touches);
+    const a=angle(e.touches);
+    scaleFactor+= (d-lastDist)*0.002;
+    rotateOffset+= a-lastAngle;
+    lastDist=d;
+    lastAngle=a;
+  }
+});
+
+const distance=t=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+const angle=t=>Math.atan2(t[1].clientY-t[0].clientY, t[1].clientX-t[0].clientX);
+</script>
+</body>
+</html>

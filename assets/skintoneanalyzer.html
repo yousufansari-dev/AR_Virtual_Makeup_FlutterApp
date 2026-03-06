@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro Skin Tone & Face Shape Advisor</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg,#f5f7fa,#d9e2f3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    margin: 0;
+  }
+  h1 {
+    margin-bottom: 20px;
+    text-align: center;
+    color: #333;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+  }
+  video {
+    border-radius: 15px;
+    border: 4px solid #fff;
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .result-box {
+    margin-top: 20px;
+    width: 100%;
+    max-width: 600px;
+    background: #fff;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  }
+  .skin-tone-color {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 10px;
+    border: 2px solid #ccc;
+    vertical-align: middle;
+  }
+  .btn-download {
+    margin-top: 15px;
+    width: 100%;
+  }
+  @media(max-width:600px){
+    .result-box{padding:15px;}
+    h1{font-size:1.5rem;}
+    .skin-tone-color{width:40px;height:40px;}
+  }
+</style>
+</head>
+<body>
+
+<video id="video" autoplay playsinline></video>
+
+<div class="result-box">
+  <p><strong>Detected Skin Tone:</strong> <span id="skinTone">Start camera</span> <span id="skinColor" class="skin-tone-color"></span></p>
+  <p><strong>Skin Tone Makeup Recommendation:</strong> <span id="skinMakeup">Start camera to detect skin tone.</span></p>
+  <p><strong>Lipstick Shade Suggestion:</strong> <span id="lipShade">-</span></p>
+  <p><strong>Hair Style/Color Suggestion:</strong> <span id="hairStyle">-</span></p>
+  <p><strong>Detected Face Shape:</strong> <span id="faceShape">Start camera</span></p>
+  <p><strong>Face Shape Makeup Recommendation:</strong> <span id="shapeMakeup">Recommendations appear once face shape is detected.</span></p>
+  <button id="downloadPDF" class="btn btn-primary btn-download">Download PDF</button>
+</div>
+
+<script>
+const video = document.getElementById('video');
+const skinToneEl = document.getElementById('skinTone');
+const skinColorEl = document.getElementById('skinColor');
+const skinMakeupEl = document.getElementById('skinMakeup');
+const faceShapeEl = document.getElementById('faceShape');
+const shapeMakeupEl = document.getElementById('shapeMakeup');
+const lipShadeEl = document.getElementById('lipShade');
+const hairStyleEl = document.getElementById('hairStyle');
+const downloadBtn = document.getElementById('downloadPDF');
+
+let detectionInterval = null;
+
+// Access webcam
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => {
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      video.play();
+      // Start detection only after camera is ready
+      detectionInterval = setInterval(detectSkinToneAndShape, 3000);
+    };
+  })
+  .catch(err => alert('Camera access denied: ' + err));
+
+// Dummy detection
+function detectSkinToneAndShape(){
+  const skinTones = ["Very Fair","Fair","Light","Light Medium","Medium","Medium Dark","Dark","Deep Dark"];
+  const faceShapes = ["Oval","Round","Square","Heart","Long","Diamond"];
+  const skinTone = skinTones[Math.floor(Math.random()*skinTones.length)];
+  const faceShape = faceShapes[Math.floor(Math.random()*faceShapes.length)];
+
+  const skinToneColors = {
+    "Very Fair":"#fff0e0",
+    "Fair":"#ffe0c6",
+    "Light":"#ffd1a9",
+    "Light Medium":"#ffb780",
+    "Medium":"#e59662",
+    "Medium Dark":"#b5724a",
+    "Dark":"#7f462c",
+    "Deep Dark":"#50261b"
+  };
+
+  skinToneEl.innerText = skinTone;
+  skinColorEl.style.backgroundColor = skinToneColors[skinTone];
+  skinMakeupEl.innerText = getSkinToneMakeup(skinTone);
+  faceShapeEl.innerText = faceShape;
+  shapeMakeupEl.innerText = getShapeMakeup(faceShape);
+  lipShadeEl.innerText = getLipShade(skinTone,faceShape);
+  hairStyleEl.innerText = getHairStyle(skinTone,faceShape);
+}
+
+function getSkinToneMakeup(tone){
+  switch(tone){
+    case "Very Fair": return "Light, cool-toned foundations, soft pink/peach blush, berry/nude lipsticks.";
+    case "Fair": return "Light neutral foundations, pink/coral blush, soft rose/peach lipsticks.";
+    case "Light": return "Light-medium foundations, rosy/peach blush, pink/red lipsticks.";
+    case "Light Medium": return "Medium warm foundations, apricot/bronze blush, coral/warm red lipsticks.";
+    case "Medium": return "Medium golden foundations, terracotta/deep peach blush, rich berry/brick red lipsticks.";
+    case "Medium Dark": return "Medium-dark warm/olive foundations, deep berry/plum blush, deep red/brown lipsticks.";
+    case "Dark": return "Dark foundations warm/cool, deep plum/wine blush, bold red/true brown lipsticks.";
+    case "Deep Dark": return "Deep rich foundations, deep berry/fuchsia blush, dark plum/chocolate brown lipsticks.";
+    default: return "-";
+  }
+}
+
+function getShapeMakeup(shape){
+  switch(shape){
+    case "Oval": return "Most versatile. Enhance natural features.";
+    case "Round": return "Contour jawline/temples; highlight face center.";
+    case "Square": return "Soften angles, blush on apples, contour jawline gently.";
+    case "Heart": return "Balance forehead & chin, blush on cheekbones, highlight chin.";
+    case "Long": return "Add width horizontally, contour under chin.";
+    case "Diamond": return "Highlight forehead/jawline; soften cheeks.";
+    default: return "-";
+  }
+}
+
+function getLipShade(skinTone,faceShape){
+  const shades = {
+    "Very Fair":"Soft pinks & peach",
+    "Fair":"Rose or light coral",
+    "Light":"Peachy pink or red",
+    "Light Medium":"Coral/warm pink",
+    "Medium":"Berry or brick red",
+    "Medium Dark":"Deep red/plum",
+    "Dark":"Bold red or brown",
+    "Deep Dark":"Fuchsia or dark plum"
+  };
+  return shades[skinTone] || "-";
+}
+
+function getHairStyle(skinTone,faceShape){
+  const styles = {
+    "Very Fair":"Light blonde to ash brown, soft waves",
+    "Fair":"Golden blonde or light brown, curls or layers",
+    "Light":"Medium brown shades, soft curls",
+    "Light Medium":"Warm brown/ombre highlights",
+    "Medium":"Rich brown or caramel, layered styles",
+    "Medium Dark":"Deep brown/black, sleek straight or waves",
+    "Dark":"Black or dark brown, voluminous styles",
+    "Deep Dark":"Deep black, glossy straight or soft curls"
+  };
+  return styles[skinTone] || "-";
+}
+
+// PDF download
+downloadBtn.addEventListener('click', () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text("Skin Tone & Face Shape Personalized Report", 20, 20);
+  doc.setFontSize(12);
+  doc.text(`Detected Skin Tone: ${skinToneEl.innerText}`, 20, 40);
+  doc.text(`Skin Tone Makeup Recommendation: ${skinMakeupEl.innerText}`, 20, 50);
+  doc.text(`Lipstick Shade Suggestion: ${lipShadeEl.innerText}`, 20, 60);
+  doc.text(`Hair Style/Color Suggestion: ${hairStyleEl.innerText}`, 20, 70);
+  doc.text(`Detected Face Shape: ${faceShapeEl.innerText}`, 20, 80);
+  doc.text(`Face Shape Makeup Recommendation: ${shapeMakeupEl.innerText}`, 20, 90);
+  doc.save("Personalized_Beauty_Report.pdf");
+});
+</script>
+</body>
+</html>
